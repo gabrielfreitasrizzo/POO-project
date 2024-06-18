@@ -49,4 +49,11 @@ Podem ser exploradas as seguintes questões extras no trabalho:
 2. defina classes e relacionamentos entre Hoteis parceiros, que darão descontos para hospedagens em locais parceiros
 3. faça o mesmo para aéreas parceiras
 4. faça alocações para datas específicas desejadas pelos clientes, e não apenas nas "melhores datas" oferecidas pela sua Empresa de Viagens
- 
+
+# Licença
+
+MIT License
+
+Igor Machado Coelho
+
+Copyleft 2024
