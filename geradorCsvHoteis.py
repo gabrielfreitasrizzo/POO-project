@@ -3,7 +3,7 @@ import random
 
 cidades = ["RIO", "SAO", "CNF", "REC", "FOR", "SSA", "BEL"]
 hoteis = ["Hotel 1", "Hotel 2", "Hotel 3", "Hotel 4", "Hotel 5"]
-vagas = [10, 20, 30, 40]
+vagas = [50, 60, 70, 80, 90, 100]
 precos = [100, 200, 300, 400, 500, 600, 700, 800]
 estrelas = [1, 2, 3, 4, 5]
 

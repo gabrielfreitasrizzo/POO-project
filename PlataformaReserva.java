@@ -68,38 +68,6 @@ public class PlataformaReserva {
         }
     }
 
-    public void adicionarCliente(Usuario cliente) {
-        clientes.add(cliente);
-    }
-
-    // public void processarReservasSequencial() {
-    //     for (Usuario cliente : clientes) {
-    //         Orcamento orcamento = gerarOrcamento(cliente);
-    //         if (orcamento != null && cliente.getSaldo() >= orcamento.getTotalPreco()) {
-    //             // Reserva confirmada
-    //             Hotel hotel = orcamento.getHotel();
-    //             Voo voo = orcamento.getVoo();
-    //             boolean confirmaVoo = voo.reservar();
-    //             boolean confirmaHotel = hotel.reservar();
-    //             if (confirmaVoo && confirmaHotel) {
-    //                 System.out.println("Reserva confirmada para o cliente: " + cliente.getNome());
-    //                 System.out.println("Vagas no voo: " + voo.getAssentosDisponiveis());
-    //                 System.out.println("Vagas no hotel: " + hotel.getVagasDisponiveis());
-    //             } else {
-    //                 if (!confirmaHotel && confirmaVoo) {
-    //                     voo.liberarReserva();
-    //                 }
-    //                 if (!confirmaVoo && confirmaHotel) {
-    //                     hotel.liberarReserva();
-    //                 }
-    //             }
-    //         } else {
-    //             // Reserva não confirmada
-    //             System.out.println("Reserva não confirmada para o cliente: " + cliente.getNome());
-    //         }
-    //     }
-    // }
-
     public void processarReservasSequencial(String arquivoSaida) {
         int totalPedidos = clientes.size();
         Set<String> clientesDistintos = new HashSet<>();
@@ -110,30 +78,28 @@ public class PlataformaReserva {
 
         for (Usuario cliente : clientes) {
             Orcamento orcamento = gerarOrcamento(cliente);
-            if (orcamento != null && cliente.getSaldo() >= orcamento.getTotalPreco()) {
-                Hotel hotel = orcamento.getHotel();
-                Voo voo = orcamento.getVoo();
-                boolean confirmaVoo = voo.reservar();
-                boolean confirmaHotel = hotel.reservar();
-                if (confirmaVoo && confirmaHotel) {
-                    pedidosAtendidos++;
-                    totalGastoClientes += orcamento.getTotalPreco();
-                    totalGastoHoteis += hotel.getPreco() * cliente.getDuracao();
-                    totalGastoVoos += voo.getPreco();
-                    clientesDistintos.add(cliente.getNome());
-                    System.out.println("Reserva confirmada para o cliente: " + cliente.getNome());
-                    System.out.println("Vagas no voo: " + voo.getAssentosDisponiveis());
-                    System.out.println("Vagas no hotel: " + hotel.getVagasDisponiveis());
-                } else {
-                    if (confirmaVoo) {
-                        voo.liberarReserva();
-                    }
-                    if (confirmaHotel) {
-                        hotel.liberarReserva();
+            if (orcamento != null) {
+                clientesDistintos.add(cliente.getNome());
+                if (cliente.getSaldo() >= orcamento.getTotalPreco()) {
+                    Hotel hotel = orcamento.getHotel();
+                    Voo voo = orcamento.getVoo();
+                    boolean confirmaVoo = voo.reservar();
+                    boolean confirmaHotel = hotel.reservar();
+                    if (confirmaVoo && confirmaHotel) {
+                        pedidosAtendidos++;
+                        totalGastoClientes += orcamento.getTotalPreco();
+                        totalGastoHoteis += hotel.getPreco() * cliente.getDuracao();
+                        totalGastoVoos += voo.getPreco();
+                        cliente.setSaldo(cliente.getSaldo() - orcamento.getTotalPreco());
+                    } else {
+                        if (confirmaVoo) {
+                            voo.liberarReserva();
+                        }
+                        if (confirmaHotel) {
+                            hotel.liberarReserva();
+                        }
                     }
                 }
-            } else {
-                System.out.println("Reserva não confirmada para o cliente: " + cliente.getNome());
             }
         }
 
@@ -150,15 +116,68 @@ public class PlataformaReserva {
         }
     }
 
-    public void processarReservasParalelo() {
-        // Implementação do processamento paralelo de reservas utilizando threads
+    public void processarReservasParalelo(String arquivoSaida) {
+        int totalPedidos = clientes.size();
+        Set<String> clientesDistintos = new HashSet<>();
+        int pedidosAtendidos = 0;
+        double totalGastoClientes = 0;
+        double totalGastoHoteis = 0;
+        double totalGastoVoos = 0;
+
+        // Criar threads para processar os clientes
+        ProcessarReservaRunnable runnable1 = new ProcessarReservaRunnable(clientes, voos, hoteis, clientesDistintos);
+        ProcessarReservaRunnable runnable2 = new ProcessarReservaRunnable(clientes, voos, hoteis, clientesDistintos);
+        ProcessarReservaRunnable runnable3 = new ProcessarReservaRunnable(clientes, voos, hoteis, clientesDistintos);
+
+        Thread thread1 = new Thread(runnable1);
+        Thread thread2 = new Thread(runnable2);
+        Thread thread3 = new Thread(runnable3);
+        thread1.start();
+        thread2.start();
+        thread3.start();
+
+        // Aguardar todas as threads terminarem
+        try {
+            thread1.join();
+            thread2.join();
+            thread3.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // Coletar resultados das threads
+        pedidosAtendidos += runnable1.getPedidosAtendidosLocal();
+        pedidosAtendidos += runnable2.getPedidosAtendidosLocal();
+        pedidosAtendidos += runnable3.getPedidosAtendidosLocal();
+        totalGastoClientes += runnable1.getTotalGastoClientesLocal();
+        totalGastoClientes += runnable2.getTotalGastoClientesLocal();
+        totalGastoClientes += runnable3.getTotalGastoClientesLocal();
+        totalGastoHoteis += runnable1.getTotalGastoHoteisLocal();
+        totalGastoHoteis += runnable2.getTotalGastoHoteisLocal();
+        totalGastoHoteis += runnable3.getTotalGastoHoteisLocal();
+        totalGastoVoos += runnable1.getTotalGastoVoosLocal();
+        totalGastoVoos += runnable2.getTotalGastoVoosLocal();
+        totalGastoVoos += runnable3.getTotalGastoVoosLocal();
+
+        // Escrever no arquivo de saída
+        try (FileWriter writer = new FileWriter(arquivoSaida)) {
+            writer.append(String.format("%d;%d;%d;%.2f;%.2f;%.2f\n",
+                    totalPedidos,
+                    clientesDistintos.size(),
+                    pedidosAtendidos,
+                    totalGastoClientes,
+                    totalGastoHoteis,
+                    totalGastoVoos));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
+    
 
     private Orcamento gerarOrcamento(Usuario cliente) {
         Voo vooEscolhido = null;
         Hotel hotelEscolhido = null;
 
-        // Escolher voo mais barato
         for (Voo voo : voos) {
             if (voo.getOrigem().equals(cliente.getOrigem()) && voo.getDestino().equals(cliente.getDestino()) && voo.getAssentosDisponiveis() > 0) {
                 if (vooEscolhido == null || voo.getPreco() < vooEscolhido.getPreco()) {
@@ -167,7 +186,6 @@ public class PlataformaReserva {
             }
         }
 
-        // Escolher hotel mais barato
         for (Hotel hotel : hoteis) {
             if (hotel.getLocal().equals(cliente.getDestino()) && hotel.getEstrelas() >= cliente.getEstrelasMinimas() && hotel.getVagasDisponiveis() > 0) {
                 if (hotelEscolhido == null || hotel.getPreco() < hotelEscolhido.getPreco()) {
@@ -183,19 +201,25 @@ public class PlataformaReserva {
         }
     }
 
-    public void medirTempoExecucao() {
-        // Implementação da marcação de tempos e experimentação
-    }
-
     public static void main(String[] args) {
         PlataformaReserva plataforma = new PlataformaReserva();
 
+        
         try {
             plataforma.lerVoos("voos.csv");
             plataforma.lerHoteis("hoteis.csv");
-            plataforma.lerClientes("clientes_1000.csv");
-
+            plataforma.lerClientes("clientes_10000.csv");
+            
+            long startTime = System.currentTimeMillis();
             plataforma.processarReservasSequencial("saida-sequencial.csv");
+            long endTime = System.currentTimeMillis();
+            System.out.println("Tempo de execução total: " + (endTime - startTime) + " ms");
+
+            long startTime2 = System.currentTimeMillis();
+            plataforma.processarReservasParalelo("saida-paralelo.csv");
+            long endTime2 = System.currentTimeMillis();
+            System.out.println("Tempo total de execução: " + (endTime2 - startTime2) + " ms");
+
         } catch (IOException e) {
             e.printStackTrace();
         }
